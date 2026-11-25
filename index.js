@@ -5,8 +5,14 @@ const { SocksProxyAgent } = require('socks-proxy-agent');
 const app = express();
 app.use(express.json());
 
-// Endpoint nhận request từ Hosting
+// 1. Route kiểm tra server (Truy cập link gốc trên trình duyệt sẽ thấy dòng này)
+app.get('/', (req, res) => {
+  res.send('✅ Proxy Relay Server is LIVE and ready!');
+});
+
+// 2. Route nhận request POST từ Hosting
 app.post('/api', async (req, res) => {
+  console.log('--- Nhận request mới từ Hosting ---');
   try {
     const { 
       proxy_host, 
@@ -19,24 +25,25 @@ app.post('/api', async (req, res) => {
 
     // Kiểm tra dữ liệu đầu vào
     if (!proxy_host || !proxy_port || !target_url) {
+      console.log('Lỗi: Thiếu thông tin proxy hoặc target_url');
       return res.status(400).json({ 
         success: false, 
         message: 'Thiếu thông tin proxy (IP, Port) hoặc target_url' 
       });
     }
 
-    // 1. Tạo chuỗi Proxy động
-    // Định dạng: socks5://user:pass@ip:port
+    // Tạo chuỗi Proxy động (socks5://user:pass@ip:port)
     let authString = '';
     if (proxy_user && proxy_pass) {
       authString = `${encodeURIComponent(proxy_user)}:${encodeURIComponent(proxy_pass)}@`;
     }
     const proxyUrl = `socks5://${authString}${proxy_host}:${proxy_port}`;
+    console.log(`Đang kết nối qua Proxy: ${proxy_host}:${proxy_port}`);
     
-    // 2. Khởi tạo Agent kết nối qua Proxy
+    // Khởi tạo Agent kết nối qua Proxy
     const agent = new SocksProxyAgent(proxyUrl);
 
-    // 3. Gửi request HTTPS đến web gốc xuyên qua Proxy
+    // Gửi request HTTPS đến web gốc xuyên qua Proxy
     const response = await axios.post(target_url, payload || {}, {
       httpsAgent: agent,
       headers: {
@@ -46,13 +53,15 @@ app.post('/api', async (req, res) => {
       timeout: 15000 // Timeout 15s
     });
 
-    // 4. Trả kết quả về cho Hosting
+    console.log('Lấy dữ liệu thành công!');
+    // Trả kết quả về cho Hosting
     res.json({
       success: true,
       data: response.data
     });
 
   } catch (error) {
+    console.error('Lỗi khi gọi API qua Proxy:', error.message);
     res.status(500).json({ 
       success: false, 
       message: 'Lỗi khi gửi request qua proxy',
