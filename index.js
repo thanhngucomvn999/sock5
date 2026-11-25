@@ -5,7 +5,7 @@ const { SocksProxyAgent } = require('socks-proxy-agent');
 const app = express();
 app.use(express.json());
 
-// MÃ BẢO MẬT (Phải khớp với mã trong handler.php)
+// MÃ BẢO MẬT (Phải khớp với apiKey trong PHP)
 const SECRET_KEY = 'dang234'; 
 
 app.get('/', (req, res) => {
@@ -15,7 +15,7 @@ app.get('/', (req, res) => {
 app.post('/api', async (req, res) => {
   try {
     const { 
-      api_key, // Nhận mã bảo mật
+      api_key, 
       proxy_host, 
       proxy_port, 
       proxy_user, 
@@ -24,7 +24,7 @@ app.post('/api', async (req, res) => {
       payload 
     } = req.body;
 
-    // 1. Kiểm tra mã bảo mật
+    // Kiểm tra mã bảo mật
     if (api_key !== SECRET_KEY) {
       return res.status(403).json({ success: false, message: 'Sai API Key. Từ chối truy cập!' });
     }
@@ -33,16 +33,15 @@ app.post('/api', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Thiếu thông tin proxy hoặc target_url' });
     }
 
-    // 2. Tạo chuỗi Proxy động
+    // Tạo chuỗi Proxy động
     let authString = '';
     if (proxy_user && proxy_pass) {
       authString = `${encodeURIComponent(proxy_user)}:${encodeURIComponent(proxy_pass)}@`;
     }
     const proxyUrl = `socks5://${authString}${proxy_host}:${proxy_port}`;
-    
     const agent = new SocksProxyAgent(proxyUrl);
 
-    // 3. Gửi request
+    // Gửi request
     const response = await axios.post(target_url, payload || {}, {
       httpsAgent: agent,
       headers: {
